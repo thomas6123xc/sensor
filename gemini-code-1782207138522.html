@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GardenLock Live</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      text-align: center;
+      background-color: #f4f7f6;
+      color: #333;
+      padding: 40px 20px;
+      margin: 0;
+    }
+    .card {
+      background: white;
+      max-width: 400px;
+      margin: 0 auto;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+    h1 {
+      margin-top: 0;
+      color: #2e7d32;
+      font-size: 28px;
+    }
+    button {
+      background-color: #2e7d32;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.2s, transform 0.1s;
+    }
+    button:hover {
+      background-color: #1b5e20;
+    }
+    button:active {
+      transform: scale(0.98);
+    }
+    h2 {
+      font-size: 48px;
+      margin: 24px 0;
+      color: #1a237e;
+    }
+    #status {
+      font-size: 14px;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h1>🌱 GardenLock</h1>
+
+    <button onclick="connect()">Connect Device</button>
+
+    <h2 id="value">-- %</h2>
+
+    <p id="status">Disconnected</p>
+  </div>
+
+<script>
+let characteristic;
+
+const SERVICE_UUID = "12345678-1234-1234-1234-1234567890ab";
+const CHAR_UUID    = "87654321-4321-4321-4321-ba0987654321";
+
+async function connect() {
+  try {
+    document.getElementById("status").innerText = "Searching...";
+
+    const device = await navigator.bluetooth.requestDevice({
+      filters: [{ name: "GardenLock" }],
+      optionalServices: [SERVICE_UUID]
+    });
+
+    document.getElementById("status").innerText = "Connecting...";
+
+    const server = await device.gatt.connect();
+    const service = await server.getPrimaryService(SERVICE_UUID);
+
+    characteristic = await service.getCharacteristic(CHAR_UUID);
+
+    await characteristic.startNotifications();
+
+    characteristic.addEventListener(
+      "characteristicvaluechanged",
+      handleData
+    );
+
+    document.getElementById("status").innerText = "Connected";
+
+  } catch (err) {
+    document.getElementById("status").innerText = "Error: " + err.message;
+  }
+}
+
+function handleData(event) {
+  let decoder = new TextDecoder("utf-8");
+  let value = decoder.decode(event.target.value);
+
+  document.getElementById("value").innerText = value + " %";
+}
+</script>
+
+</body>
+</html>
