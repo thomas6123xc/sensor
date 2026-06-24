@@ -3,14 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GardenLock Monitor</title>
+  <title>GardenLock Live</title>
   <style>
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       text-align: center;
       background-color: #f4f7f6;
-      margin: 0;
+      color: #333;
       padding: 40px 20px;
+      margin: 0;
     }
     .card {
       background: white;
@@ -18,16 +19,18 @@
       margin: 0 auto;
       padding: 30px;
       border-radius: 16px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     }
     .logo {
-      max-width: 80%;
+      max-width: 100%;
       height: auto;
-      margin-bottom: 20px;
+      margin-bottom: 24px;
     }
     h1 {
-      font-size: 20px;
+      margin-top: 0;
       color: #333;
+      font-size: 20px;
+      font-weight: 600;
       margin-bottom: 24px;
     }
     button {
@@ -35,22 +38,29 @@
       color: white;
       font-size: 16px;
       font-weight: bold;
-      padding: 14px 28px;
+      padding: 12px 24px;
       border: none;
-      border-radius: 30px;
+      border-radius: 8px;
       cursor: pointer;
-      box-shadow: 0 2px 6px rgba(46,125,50,0.3);
+      transition: background-color 0.2s, transform 0.1s;
+    }
+    button:hover {
+      background-color: #1b5e20;
+    }
+    button:active {
+      transform: scale(0.98);
     }
     h2 {
-      font-size: 64px;
-      margin: 20px 0;
-      color: #1b5e20;
+      font-size: 48px;
+      margin: 24px 0;
+      color: #1a237e;
     }
     #status {
-      font-size: 12px;
-      color: #888;
+      font-size: 14px;
+      color: #666;
       text-transform: uppercase;
       letter-spacing: 1px;
+      margin: 0;
     }
   </style>
 </head>
@@ -60,57 +70,49 @@
     <img src="image_2.png" alt="GardenLock Logo" class="logo">
     <h1>SmartSoil Monitor Reading</h1>
 
-    <button onclick="connectBLE()">Connect Device</button>
+    <button onclick="connect()">Connect Device</button>
 
     <h2 id="value">-- %</h2>
+
     <p id="status">Disconnected</p>
   </div>
 
 <script>
-let device, server;
+let characteristic;
 
-async function connectBLE() {
-  const statusElement = document.getElementById("status");
-  const valueElement = document.getElementById("value");
-  
+const SERVICE_UUID = "12345678-1234-1234-1234-1234567890ab";
+const CHAR_UUID    = "87654321-4321-4321-4321-ba0987654321";
+
+async function connect() {
   try {
-    statusElement.innerText = "Opening Bluetooth Scan...";
+    document.getElementById("status").innerText = "Searching...";
 
-    // Unfiltered request: This forces the browser to list ALL nearby Bluetooth signals
-    device = await navigator.bluetooth.requestDevice({
-      acceptAllDevices: true,
-      optionalServices: ['12345678-1234-1234-1234-1234567890ab'] 
+    // Explicitly filters out all background noise to only show GardenLock
+    const device = await navigator.bluetooth.requestDevice({
+      filters: [{ name: "GardenLock" }],
+      optionalServices: [SERVICE_UUID]
     });
 
-    statusElement.innerText = "Connecting to device...";
-    server = await device.gatt.connect();
+    document.getElementById("status").innerText = "Connecting...";
 
-    statusElement.innerText = "Finding data stream...";
-    // Accesses the primary service
-    const service = await server.getPrimaryService('12345678-1234-1234-1234-1234567890ab');
-    
-    // Accesses the exact UTF-8 characteristic data
-    const characteristic = await service.getCharacteristic('87654321-4321-4321-4321-ba0987654321');
+    const server = await device.gatt.connect();
+    const service = await server.getPrimaryService(SERVICE_UUID);
+    characteristic = await service.getCharacteristic(CHAR_UUID);
 
-    statusElement.innerText = "Streaming Live Data";
     await characteristic.startNotifications();
-    
-    characteristic.addEventListener('characteristicvaluechanged', (event) => {
-      let decoder = new TextDecoder("utf-8");
-      let rawString = decoder.decode(event.target.value);
-      // Clean up any stray spaces/newlines and display the data
-      valueElement.innerText = rawString.trim() + " %";
-    });
+    characteristic.addEventListener("characteristicvaluechanged", handleData);
 
-    device.addEventListener('gattserverdisconnected', () => {
-      statusElement.innerText = "Disconnected";
-      valueElement.innerText = "-- %";
-    });
+    document.getElementById("status").innerText = "Connected";
 
   } catch (err) {
-    statusElement.innerText = "Error: " + err.message;
-    console.error(err);
+    document.getElementById("status").innerText = "Error: " + err.message;
   }
+}
+
+function handleData(event) {
+  let decoder = new TextDecoder("utf-8");
+  let value = decoder.decode(event.target.value);
+  document.getElementById("value").innerText = value.trim() + " %";
 }
 </script>
 
