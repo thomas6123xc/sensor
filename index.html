@@ -3,15 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GardenLock Live</title>
+  <title>GardenLock Monitor</title>
   <style>
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       text-align: center;
       background-color: #f4f7f6;
-      color: #333;
-      padding: 40px 20px;
       margin: 0;
+      padding: 40px 20px;
     }
     .card {
       background: white;
@@ -19,97 +18,99 @@
       margin: 0 auto;
       padding: 30px;
       border-radius: 16px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+    .logo {
+      max-width: 80%;
+      height: auto;
+      margin-bottom: 20px;
     }
     h1 {
-      margin-top: 0;
-      color: #2e7d32;
-      font-size: 28px;
+      font-size: 20px;
+      color: #333;
+      margin-bottom: 24px;
     }
     button {
       background-color: #2e7d32;
       color: white;
       font-size: 16px;
       font-weight: bold;
-      padding: 12px 24px;
+      padding: 14px 28px;
       border: none;
-      border-radius: 8px;
+      border-radius: 30px;
       cursor: pointer;
-      transition: background-color 0.2s, transform 0.1s;
-    }
-    button:hover {
-      background-color: #1b5e20;
-    }
-    button:active {
-      transform: scale(0.98);
+      box-shadow: 0 2px 6px rgba(46,125,50,0.3);
     }
     h2 {
-      font-size: 48px;
-      margin: 24px 0;
-      color: #1a237e;
+      font-size: 64px;
+      margin: 20px 0;
+      color: #1b5e20;
     }
     #status {
-      font-size: 14px;
-      color: #666;
+      font-size: 12px;
+      color: #888;
       text-transform: uppercase;
       letter-spacing: 1px;
-      margin: 0;
     }
   </style>
 </head>
 <body>
 
   <div class="card">
-    <h1>🌱 GardenLock</h1>
+    <img src="image_2.png" alt="GardenLock Logo" class="logo">
+    <h1>SmartSoil Monitor Reading</h1>
 
-    <button onclick="connect()">Connect Device</button>
+    <button onclick="connectBLE()">Connect Device</button>
 
     <h2 id="value">-- %</h2>
-
     <p id="status">Disconnected</p>
   </div>
 
 <script>
-let characteristic;
+let device, server;
 
-const SERVICE_UUID = "12345678-1234-1234-1234-1234567890ab";
-const CHAR_UUID    = "87654321-4321-4321-4321-ba0987654321";
-
-async function connect() {
+async function connectBLE() {
+  const statusElement = document.getElementById("status");
+  const valueElement = document.getElementById("value");
+  
   try {
-    document.getElementById("status").innerText = "Searching...";
+    statusElement.innerText = "Opening Bluetooth Scan...";
 
-    const device = await navigator.bluetooth.requestDevice({
-      filters: [{ name: "GardenLock" }],
-      optionalServices: [SERVICE_UUID]
+    // Unfiltered request: This forces the browser to list ALL nearby Bluetooth signals
+    device = await navigator.bluetooth.requestDevice({
+      acceptAllDevices: true,
+      optionalServices: ['12345678-1234-1234-1234-1234567890ab'] 
     });
 
-    document.getElementById("status").innerText = "Connecting...";
+    statusElement.innerText = "Connecting to device...";
+    server = await device.gatt.connect();
 
-    const server = await device.gatt.connect();
-    const service = await server.getPrimaryService(SERVICE_UUID);
+    statusElement.innerText = "Finding data stream...";
+    // Accesses the primary service
+    const service = await server.getPrimaryService('12345678-1234-1234-1234-1234567890ab');
+    
+    // Accesses the exact UTF-8 characteristic data
+    const characteristic = await service.getCharacteristic('87654321-4321-4321-4321-ba0987654321');
 
-    characteristic = await service.getCharacteristic(CHAR_UUID);
-
+    statusElement.innerText = "Streaming Live Data";
     await characteristic.startNotifications();
+    
+    characteristic.addEventListener('characteristicvaluechanged', (event) => {
+      let decoder = new TextDecoder("utf-8");
+      let rawString = decoder.decode(event.target.value);
+      // Clean up any stray spaces/newlines and display the data
+      valueElement.innerText = rawString.trim() + " %";
+    });
 
-    characteristic.addEventListener(
-      "characteristicvaluechanged",
-      handleData
-    );
-
-    document.getElementById("status").innerText = "Connected";
+    device.addEventListener('gattserverdisconnected', () => {
+      statusElement.innerText = "Disconnected";
+      valueElement.innerText = "-- %";
+    });
 
   } catch (err) {
-    document.getElementById("status").innerText = "Error: " + err.message;
+    statusElement.innerText = "Error: " + err.message;
+    console.error(err);
   }
-}
-
-function handleData(event) {
-  let decoder = new TextDecoder("utf-8");
-  let value = decoder.decode(event.target.value);
-
-  document.getElementById("value").innerText = value + " %";
 }
 </script>
 
