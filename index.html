@@ -143,16 +143,16 @@ function handleData(event) {
   // Logic threshold changes text and colors automatically
   if (moisture <= 20) {
     feedbackEl.innerText = "Critical, too dry";
-    feedbackEl.style.color = "#d32f2f"; // Warning Red
+    feedbackEl.style.color = "#d32f2f";
   } else if (moisture > 20 && moisture <= 40) {
     feedbackEl.innerText = "Low Moisture";
-    feedbackEl.style.color = "#f57c00"; // Alert Orange
+    feedbackEl.style.color = "#f57c00";
   } else if (moisture > 40 && moisture <= 75) {
     feedbackEl.innerText = "Perfect Condition";
-    feedbackEl.style.color = "#4d7c59"; // Your brand Green!
+    feedbackEl.style.color = "#4d7c59";
   } else if (moisture > 75) {
     feedbackEl.innerText = "Saturated, too wet";
-    feedbackEl.style.color = "#1976d2"; // Water Blue
+    feedbackEl.style.color = "#1976d2";
   }
 }
 </script>
