@@ -32,7 +32,7 @@
     }
     h1 {
       margin-top: 0;
-      color: #514227; /* Swapped to match your company logo brown */
+      color: #514227;
       font-size: 20px;
       font-weight: 600;
       margin-bottom: 36px;
@@ -58,9 +58,16 @@
     }
     h2 {
       font-size: 54px;
-      margin: 36px 0;
-      color: #514227; /* Matches the reading value color as well */
+      margin: 36px 0 5px 0; /* Tightened the bottom margin for the feedback text */
+      color: #514227;
       line-height: 1.2;
+    }
+    #feedback {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 36px;
+      color: #888;
+      transition: color 0.3s ease;
     }
     #status {
       font-size: 14px;
@@ -81,6 +88,7 @@
     <button onclick="connect()">Connect Device</button>
 
     <h2 id="value">-- %</h2>
+    <div id="feedback">Ready to Scan</div>
 
     <p id="status">Disconnected</p>
   </div>
@@ -118,8 +126,34 @@ async function connect() {
 
 function handleData(event) {
   let decoder = new TextDecoder("utf-8");
-  let value = decoder.decode(event.target.value);
-  document.getElementById("value").innerText = value.trim() + " %";
+  let valueStr = decoder.decode(event.target.value).trim();
+  
+  document.getElementById("value").innerText = valueStr + " %";
+  
+  // Convert string to a real number to analyze it
+  let moisture = parseInt(valueStr);
+  let feedbackEl = document.getElementById("feedback");
+
+  if (isNaN(moisture)) {
+    feedbackEl.innerText = "Reading Data...";
+    feedbackEl.style.color = "#888";
+    return;
+  }
+
+  // Logic threshold changes text and colors automatically
+  if (moisture <= 20) {
+    feedbackEl.innerText = "Critical, too dry";
+    feedbackEl.style.color = "#d32f2f"; // Warning Red
+  } else if (moisture > 20 && moisture <= 40) {
+    feedbackEl.innerText = "Low Moisture";
+    feedbackEl.style.color = "#f57c00"; // Alert Orange
+  } else if (moisture > 40 && moisture <= 75) {
+    feedbackEl.innerText = "Perfect Condition";
+    feedbackEl.style.color = "#4d7c59"; // Your brand Green!
+  } else if (moisture > 75) {
+    feedbackEl.innerText = "Saturated, too wet";
+    feedbackEl.style.color = "#1976d2"; // Water Blue
+  }
 }
 </script>
 
